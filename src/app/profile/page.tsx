@@ -3,12 +3,10 @@ import { verifyUser } from "../_lib/actions";
 
     
 export default  async function Profile() {
-    let user = await verifyUser()
-
-
-    if(!user) {
-        return redirect('/login')
-    }
+    // let user = await verifyUser()
+    // if(!user) {
+    //     return redirect('/login')
+    // }
 
     return (
       <div className="min-h-screen flex items-center justify-center">

@@ -51,3 +51,18 @@ export const deleteUserInSession = (token: string) => {
 export const updateExpire = (token: string, expires: number) => {
     return sql.prepare(`UPDATE session SET expires = ? WHERE id = ?`).run(expires + 500, token)
 }
+export const upAttepts = (id: number) => {
+    return sql.prepare(`UPDATE users SET attempts = attempts + 1 WHERE id = ?`).run(id);
+};
+
+export const deleteAttempts = (id: number) => {
+    return sql.prepare(`UPDATE users SET attempts = 0 WHERE id = ?`).run(id);
+};
+
+export const addTime = (id: number) => {
+    return sql.prepare(`UPDATE users SET time = ? WHERE id = ?`).run(Date.now(), id);
+};
+
+export const resetAttempts = (id: number) => {
+    return sql.prepare(`UPDATE users SET attempts = 0, time = 0 WHERE id = ?`).run(id);
+};

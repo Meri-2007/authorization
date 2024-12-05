@@ -1,11 +1,11 @@
 "use server"
 
-import { redirect } from "next/navigation"
-import { createSession, getUserById, getUserByLogin, insertUser, updateExpire, VerifyUser } from "./model"
+import { addTime, createSession, deleteAttempts, getUserById, getUserByLogin, insertUser, resetAttempts, upAttepts, updateExpire, VerifyUser } from "./model"
 import bcrypt from 'bcrypt'
 import { nanoid } from "nanoid"
 import { cookies } from "next/headers"
 import { ISession, IUser } from "./types"
+import { redirect } from "next/navigation"
 
 interface IState {
     message: string
@@ -37,38 +37,54 @@ export const handleSignup = async (prevState: IState, form: FormData) => {
         return { message: "Internal server error!" }
     }
 }
-export const handleLogin=async(state:IState,form:FormData)=>{
-    const login=form.get("login") as string
-    const password=form.get("password") as string
-    const found=getUserByLogin(login)
-    if(!found){
-        return {message:"Login is wrong"}
+export const handleLogin = async (state: IState, form: FormData) => {
+    const found = getUserByLogin(form.get("login") as string);
+
+    if (!found) {
+        return { message: "Login is not found" };
     }
-    const result= await bcrypt.compare(password,found.password)
-    if(!result){
-        return{message:"Wronf password"}
+
+    if (found.attempts >= 3) {
+        if (!found.time || Date.now() - found.time >= 10000) {
+            resetAttempts(found.id);
+            return { message: "you was blocked try later " };
+        }
+        return { message: "you was blocked try later" };
     }
-    const token=nanoid()
-    createSession(found.id,token);
-    (await cookies()).set('token',token)
-    return redirect('/profile')
-}
+
+    if (!(await bcrypt.compare(form.get("password") as string, found.password))) {
+        upAttepts(found.id);
+        if (found.attempts + 1 >= 3) {
+            addTime(found.id);
+            return { message: "wrong password ,you are blocked" };
+        }
+        return { message: "Wrong password" };
+    }
+
+    deleteAttempts(found.id);
+    createSession(found.id, nanoid());
+    (await cookies()).set('token', nanoid());
+
+    return redirect('/profile');
+};
+
+
 export const verifyUser = async () => {
     const tokenData = (await cookies()).get('token')
 
-    if(!tokenData) {
+    if (!tokenData) {
         return null
     }
 
     const userData = await VerifyUser(tokenData.value) as ISession
 
-    if(!userData || userData.expires < Date.now()) {
+    if (!userData || userData.expires < Date.now()) {
         return null
     }
-     
-        
+
+
     const expire = await updateExpire(tokenData.value, userData.expires)
-    
+
 
     const result = expire.changes == 1 && await getUserById(userData.user_id)
 
